@@ -26,7 +26,8 @@ let blocks;
 let pickaxe;
 let blockSize = 50;
 let speed = 0.5; // slow downward movement
-let bouncing = false; // flag to prevent multiple bounces at once
+let bounceVelocity = 0; // velocity for bounce effect
+const bounceStrength = 5; // how strong the bounce is
 
 const oreTypes = [
     { name: 'stone', color: 0x808080 },
@@ -48,7 +49,6 @@ function create() {
     pickaxe = this.add.rectangle(200, 100, 40, 40, 0xFF0000);
     this.physics.add.existing(pickaxe);
 
-    // Camera follows pickaxe
     this.cameras.main.startFollow(pickaxe, true, 0.1, 0.1);
 }
 
@@ -62,48 +62,38 @@ function addBlock(scene, index) {
 }
 
 function update() {
-    // Move pickaxe down slowly
-    pickaxe.y += speed;
+    // Apply bounce velocity
+    pickaxe.y += speed + bounceVelocity;
+
+    // Slowly reduce bounce velocity (gravity effect)
+    if (bounceVelocity > 0) bounceVelocity -= 0.3; // adjust for smooth fall
+    if (bounceVelocity < 0) bounceVelocity = 0;
 
     blocks.getChildren().forEach(block => {
+        // move blocks relative to pickaxe
         block.y -= speed;
 
-        // Remove blocks above camera
         if (block.y < pickaxe.y - 650) {
             block.destroy();
             addBlock(this, 0);
         }
 
-        // Check collision
+        // Collision: auto mine
         if (Phaser.Geom.Intersects.RectangleToRectangle(pickaxe.getBounds(), block.getBounds())) {
             block.destroy();
-
-            // Bounce pickaxe up once
-            if (!bouncing) {
-                bouncing = true;
-                this.tweens.add({
-                    targets: pickaxe,
-                    y: pickaxe.y - 30, // move up 30 pixels
-                    duration: 100,
-                    yoyo: true, // come back down
-                    ease: 'Power1',
-                    onComplete: () => { bouncing = false; }
-                });
-            }
+            bounceVelocity = bounceStrength; // pickaxe jumps up slightly
         }
     });
 }
 
 // TNT / Nuke
 function triggerTNT() {
-    console.log('TNT triggered!');
     blocks.getChildren().forEach(block => {
         if (block.y > pickaxe.y && block.y < pickaxe.y + 250) block.destroy();
     });
 }
 
 function triggerNuke() {
-    console.log('NUKE triggered!');
     blocks.getChildren().forEach(block => block.destroy());
 }
 </script>
