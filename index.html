@@ -4,14 +4,8 @@
     <meta charset="UTF-8">
     <title>Infinite Pickaxe Miner</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-        }
-        canvas {
-            display: block;
-            margin: 0 auto;
-        }
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; margin: 0 auto; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 </head>
@@ -22,15 +16,8 @@ const config = {
     width: 400,
     height: 600,
     backgroundColor: '#87CEEB',
-    physics: {
-        default: 'arcade',
-        arcade: { gravity: { y: 0 } }
-    },
-    scene: {
-        preload: preload,
-        create: create,
-        update: update
-    }
+    physics: { default: 'arcade', arcade: { gravity: { y: 0 } } },
+    scene: { preload: preload, create: create, update: update }
 };
 
 const game = new Phaser.Game(config);
@@ -38,7 +25,7 @@ const game = new Phaser.Game(config);
 let blocks;
 let pickaxe;
 let blockSize = 50;
-let speed = 2;
+let speed = 0.5; // slow downward movement
 
 const oreTypes = [
     { name: 'stone', color: 0x808080 },
@@ -58,48 +45,49 @@ function create() {
         addBlock(this, i);
     }
 
-    // Pickaxe
+    // Pickaxe in center
     pickaxe = this.add.rectangle(200, 100, 40, 40, 0xFF0000);
     this.physics.add.existing(pickaxe);
+
+    // Camera follows pickaxe
+    this.cameras.main.startFollow(pickaxe, true, 0.1, 0.1);
 }
 
 function addBlock(scene, index) {
     const ore = Phaser.Math.RND.pick(oreTypes);
     const x = 200;
-    const y = 600 - index * blockSize;
+    const y = pickaxe.y + 600 - index * blockSize; // place blocks relative to pickaxe
     const block = scene.add.rectangle(x, y, blockSize, blockSize, ore.color);
     block.oreType = ore.name;
     blocks.add(block);
 }
 
 function update() {
-    // Move pickaxe down
+    // Move pickaxe down slowly
     pickaxe.y += speed;
 
-    // Move blocks up to simulate continuous mining
+    // Move blocks up relative to camera
     blocks.getChildren().forEach(block => {
         block.y -= speed;
 
-        // Remove block if it goes off-screen
-        if (block.y > 650) {
+        // Remove blocks that are far above the camera
+        if (block.y < pickaxe.y - 650) {
             block.destroy();
-            addBlock(this, 0); // Add new block at bottom
+            addBlock(this, 0);
         }
 
-        // Check collision with pickaxe (auto mine)
+        // Auto mine blocks
         if (Phaser.Geom.Intersects.RectangleToRectangle(pickaxe.getBounds(), block.getBounds())) {
             block.destroy();
         }
     });
 }
 
-// --- TNT / Nuke Functions ---
+// TNT / Nuke Functions
 function triggerTNT() {
     console.log('TNT triggered!');
     blocks.getChildren().forEach(block => {
-        if (block.y > pickaxe.y && block.y < pickaxe.y + 250) {
-            block.destroy();
-        }
+        if (block.y > pickaxe.y && block.y < pickaxe.y + 250) block.destroy();
     });
 }
 
