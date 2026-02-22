@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Infinite Pickaxe Miner</title>
-    <style>
-        body { margin: 0; overflow: hidden; }
-        canvas { display: block; margin: 0 auto; }
-    </style>
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+<meta charset="UTF-8">
+<title>Infinite Pickaxe Miner</title>
+<style>
+body { margin: 0; overflow: hidden; }
+canvas { display: block; margin: 0 auto; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 </head>
 <body>
 <script>
@@ -26,6 +26,7 @@ let blocks;
 let pickaxe;
 let blockSize = 50;
 let speed = 0.5; // slow downward movement
+let bouncing = false; // flag to prevent multiple bounces at once
 
 const oreTypes = [
     { name: 'stone', color: 0x808080 },
@@ -40,12 +41,10 @@ function preload() {}
 function create() {
     blocks = this.add.group();
 
-    // Initial block stack
     for (let i = 0; i < 20; i++) {
         addBlock(this, i);
     }
 
-    // Pickaxe in center
     pickaxe = this.add.rectangle(200, 100, 40, 40, 0xFF0000);
     this.physics.add.existing(pickaxe);
 
@@ -56,7 +55,7 @@ function create() {
 function addBlock(scene, index) {
     const ore = Phaser.Math.RND.pick(oreTypes);
     const x = 200;
-    const y = pickaxe.y + 600 - index * blockSize; // place blocks relative to pickaxe
+    const y = pickaxe.y + 600 - index * blockSize;
     const block = scene.add.rectangle(x, y, blockSize, blockSize, ore.color);
     block.oreType = ore.name;
     blocks.add(block);
@@ -66,24 +65,36 @@ function update() {
     // Move pickaxe down slowly
     pickaxe.y += speed;
 
-    // Move blocks up relative to camera
     blocks.getChildren().forEach(block => {
         block.y -= speed;
 
-        // Remove blocks that are far above the camera
+        // Remove blocks above camera
         if (block.y < pickaxe.y - 650) {
             block.destroy();
             addBlock(this, 0);
         }
 
-        // Auto mine blocks
+        // Check collision
         if (Phaser.Geom.Intersects.RectangleToRectangle(pickaxe.getBounds(), block.getBounds())) {
             block.destroy();
+
+            // Bounce pickaxe up once
+            if (!bouncing) {
+                bouncing = true;
+                this.tweens.add({
+                    targets: pickaxe,
+                    y: pickaxe.y - 30, // move up 30 pixels
+                    duration: 100,
+                    yoyo: true, // come back down
+                    ease: 'Power1',
+                    onComplete: () => { bouncing = false; }
+                });
+            }
         }
     });
 }
 
-// TNT / Nuke Functions
+// TNT / Nuke
 function triggerTNT() {
     console.log('TNT triggered!');
     blocks.getChildren().forEach(block => {
